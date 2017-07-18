@@ -6,20 +6,169 @@ output:
 ---
 
 
-## Loading and preprocessing the data
+### 1. Load data from csv file 
+    
+```{r}
+        setwd("C:/Users/Admin/Desktop/coursera/programmingAssignment_RR1/RepData_PeerAssessment1/activity")
+        stepData <- read.csv("activity.csv")
+        summary(stepData)
+```
+
+### 2. Process/transform data 
+ 
+```{r} 
+        # Convert date from factor to type date
+        stepData$date <- as.Date(stepData$date)
+        #Get all the unique dates
+        uniqueDates <- unique(stepData$date)
+        #keep a list of intervals
+        uniqueIntervals <- unique(stepData$interval)
+        
+```        
+        
+#What is mean total of steps taken per day
+### 1.Total number of steps per day         
+
+```{r}
+        #split the steps based on date
+        stepsSplitPerDay <- split(stepData$steps, stepData$date)
+        # sum of steps taken per day
+        sumOfStepsPerDay <- sapply(stepsSplitPerDay, sum, na.rm = TRUE) 
+        sumOfStepsPerDay
+```        
+### 2. Histogram of total steps per day
+
+``` {r}
+        
+        plot(uniqueDates, sumOfStepsPerDay, 
+             main = "Histogram of steps taken each day", 
+             xlab = "Date october november", 
+             ylab = "Frequency", 
+             type = "h", lwd = 4, col = "blue")
 
 
+```
+### 3. Mean steps per day       
 
-## What is mean total number of steps taken per day?
+```{r}
+        meanOfStepsPerDay <- sapply(stepsSplitPerDay, mean, na.rm = TRUE)
+        meanDataFrame <- data.frame(uniqueDates, meanOfStepsPerDay, row.names = NULL)
+        head(meanDataFrame)
+```     
+### 4. Median steps per day
+
+``` {r}
+        medianStepsPerDay <- sapply(stepsSplitPerDay, median, na.rm = TRUE)
+        medianDataFrame <- data.frame(uniqueDates,medianStepsPerDay, row.names = NULL)
+        head(medianDataFrame)
+        
+```
+## Average daily acitivity pattern
+
+```{r}
+        intervalSplit <- split(stepData$steps, stepData$interval)  
+        averageStepsPerInterval <- sapply(intervalSplit, mean, na.rm = TRUE)
+        plot(uniqueIntervals, averageStepsPerInterval, main = "Activity pattern",
+                        xlab = "Intervals", ylab = "steps per 5 minutes",
+                        type = "l",col = "blue")
+        
+        
+        maxIntervalDays <- max(averageStepsPerInterval, na.rm = TRUE)
+        maxIndex <- as.numeric(which(averageStepsPerInterval == maxIntervalDays))
+        
+        maxInterval <- uniqueIntervals[maxIndex]
+        abline(v=maxInterval, col="red", lwd=3)
+```
 
 
+## Imputing missing data values
 
-## What is the average daily activity pattern?
+### 1. Total number of missing values
 
+```{r}
+        isna <- is.na(stepData$steps)
+        sum(isna)
+        
+```
+### 2 Filling the missing values         
 
+```{r}
+         meanOfStepsPerDay[is.nan(meanOfStepsPerDay)] <- 0
+         meanColumn <- rep(meanOfStepsPerDay, 288)
+         rawSteps <- stepData$steps
+         stepsNA <- is.na(rawSteps)
+         rawSteps[stepsNA] <- meanColumn[stepsNA]
+```
+### 3. Create a new data set with NAs replaced by mean values
 
-## Imputing missing values
+```{r}
+        datNew <- stepData
+        datNew$steps <- rawSteps
+        #datNew
+        
+        stepsSplitNew <- split(datNew$steps, stepData$date)
+        
+        totalStepsPerDayNew <- sapply(stepsSplitNew, sum)
+```  
+### 4 Plot histogram for the new data and data with NAs
 
+```{r}
+        
+        par(mfcol=c(2,1))
+        # Plot the original histogram first
+        plot(uniqueDates, sumOfStepsPerDay, main="Histogram of steps taken each day before imputing", 
+                xlab="Date (October to November 2012)", ylab="Frequency", type="h", lwd=4, col="blue")
+        # Plot the modified histogram after
+        plot(uniqueDates, totalStepsPerDayNew, main="Histogram of steps taken each day after imputing", 
+                xlab="Date (October to November 2012)", ylab="Frequency", type="h", lwd=4, col="blue")        
 
+```
+### Create a new factor variable in the steps data.
 
-## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+        dates <- strptime(datNew$date,"%Y-%m-%d")
+        wday <- dates$wday
+        
+        #classify the date as weekend or weekdays
+        classifydays <- rep(0, length(wday)-1)
+        
+        #Fill classifydays with 1 if the date is a weekday
+        classifydays[wday >= 1 & wday <=5] <- 1
+        #Fill  classifydays with 2 if the date is a weekend
+        classifydays[wday == 6 | wday == 0] <- 2
+        
+        #create a factor variable to our data set
+        factorData <- factor(classifydays, levels = c(1,2), labels = c("Weekday", "Weekend"))
+        
+        datNew$dayOfWeek <- factorData 
+        
+        
+        #split into weekdays and weekends
+        daysweekday <- datNew[datNew$dayOfWeek == "Weekday",]
+        daysweekend <- datNew[datNew$dayOfWeek == "Weekend",]
+        
+        head(datNew)
+        
+```
+### Make a panel plot for the weekdays and weekend data.
+
+```{r}
+
+        dataSplitWeekEnd <- split(daysweekend$steps, daysweekend$interval)
+        dataSplitWeekDay <- split(daysweekday$steps, daysweekday$interval)
+        
+        #get mean of each days steps
+        
+        meanStepsWeekEnd <- sapply(dataSplitWeekEnd, mean, na.rm = TRUE)
+        meanStepWeekdays <- sapply(dataSplitWeekDay, mean, na.rm = TRUE)
+
+        par(mfcol = c(2,1))
+        
+        plot(x = uniqueIntervals, y = meanStepWeekdays, type = "l", 
+                main = "weekdays plot",xlab = "days", 
+                ylab = "steps", lwd = 2, col = "blue")
+        plot(x = uniqueIntervals, y = meanStepsWeekEnd, type = "l",
+                main = "weekend plot", xlab = "days", 
+                ylab = "steps", lwd = 2, col = "red")
+```
+
